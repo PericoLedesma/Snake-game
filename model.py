@@ -34,14 +34,17 @@ class QTrainer:
         self.criterion = nn.MSELoss()
 
     def train_step(self, state, action, reward, next_state, done):
+        # We need to convert all of them to tensors
         state = torch.tensor(state, dtype=torch.float)
         next_state = torch.tensor(next_state, dtype=torch.float)
         action = torch.tensor(action, dtype=torch.long)
         reward = torch.tensor(reward, dtype=torch.float)
         # (n, x)
 
+        # We check if the state is a single state or a batch of states
         if len(state.shape) == 1:
-            # (1, x)
+            # Size (1, x)
+            # unsqueeze turns an n.d. tensor into an (n+1).d. one by adding an extra dimension of depth 1.
             state = torch.unsqueeze(state, 0)
             next_state = torch.unsqueeze(next_state, 0)
             action = torch.unsqueeze(action, 0)
@@ -51,6 +54,8 @@ class QTrainer:
         # 1: predicted Q values with current state
         pred = self.model(state)
 
+        # 2: Q_new = r + y * max(next_predicted Q value) -> only do this if not done
+
         target = pred.clone()
         for idx in range(len(done)):
             Q_new = reward[idx]
@@ -59,7 +64,7 @@ class QTrainer:
 
             target[idx][torch.argmax(action[idx]).item()] = Q_new
 
-        # 2: Q_new = r + y * max(next_predicted Q value) -> only do this if not done
+
         # pred.clone()
         # preds[argmax(action)] = Q_new
         self.optimizer.zero_grad()
