@@ -8,25 +8,52 @@ import os
 class Linear_QNet(nn.Module):
     def __init__(self, input_size, hidden_size, output_size):
         super().__init__()
-        self.linear1 = nn.Linear(input_size, hidden_size)
-        self.linear2 = nn.Linear(hidden_size, output_size)
+        print('*** Linear_QNet init ***')
+        self.linear1 = nn.Linear(input_size, hidden_size) # First/Hidden layer
+        self.linear2 = nn.Linear(hidden_size, output_size) # Output layer
+
 
     def forward(self, x):
-        x = F.relu(self.linear1(x))
-        x = self.linear2(x)
-        return x
+        x = F.relu(self.linear1(x)) # First layer
+        return self.linear2(x) # Output layer
 
     def save(self, file_name='model.pth'):
-        model_folder_path = './model'
+        print('>>>> Saving env ...', end=" ")
+        model_folder_path = os.path.join(os.getcwd(), 'model')
+        file_path = os.path.join(model_folder_path, file_name)
+
         if not os.path.exists(model_folder_path):
             os.makedirs(model_folder_path)
+            torch.save(self.state_dict(), file_path)
+        else:
+            if os.path.exists(file_path):
+                os.remove(file_path)
+                torch.save(self.state_dict(), file_path)
+                print(f'The weights file has been deleted.New weights file created!!.')
+            else:
+                torch.save(self.state_dict(), file_path)
+                print(f'The weights file did not exist. New weights file created!!')
 
-        file_name = os.path.join(model_folder_path, file_name)
-        torch.save(self.state_dict(), file_name)
 
+
+    def load_model(self, file_name='model.pth'):
+        print('+++ Loading agent model...', end=" ")
+        model_folder_path = os.path.join(os.getcwd(), 'model')
+        weights_file = os.path.join(model_folder_path, file_name)
+
+        if os.path.exists(weights_file):
+            self.load_state_dict(torch.load(weights_file))
+            print("Weights loaded successfully!!.")
+        else:
+            print(f"WARNING: The weights file does not exist. No weights loaded.")
+
+        # for name, param in self.named_parameters():
+        #     if param.requires_grad:
+        #         print(f"{name}: {param.data} | {param.size()}")
 
 class QTrainer:
     def __init__(self, model, lr, gamma):
+        print('*** QTrainer init ***')
         self.lr = lr
         self.gamma = gamma
         self.model = model
@@ -51,25 +78,26 @@ class QTrainer:
             reward = torch.unsqueeze(reward, 0)
             done = (done,)
 
+
         # 1: predicted Q values with current state
-        pred = self.model(state)
+        predicted_q = self.model(state)
+        # pred.clone()
+        target = predicted_q.clone()
 
-        # 2: Q_new = r + y * max(next_predicted Q value) -> only do this if not done
-
-        target = pred.clone()
         for idx in range(len(done)):
-            Q_new = reward[idx]
             if not done[idx]:
+                # 2: Q_new = r + gamma * max(next_predicted Q value) -> only do this if not done
                 Q_new = reward[idx] + self.gamma * torch.max(self.model(next_state[idx]))
+            else:
+                Q_new = reward[idx]
 
+            # preds[argmax(action)] = Q_new
             target[idx][torch.argmax(action[idx]).item()] = Q_new
 
 
-        # pred.clone()
-        # preds[argmax(action)] = Q_new
-        self.optimizer.zero_grad()
-        loss = self.criterion(target, pred)
-        loss.backward()
+        self.optimizer.zero_grad() # Reset the gradients from the previous iteration
+        loss = self.criterion(target, predicted_q) # Calculate the loss
+        loss.backward() # Calculate the gradients
 
         self.optimizer.step()
 

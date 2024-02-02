@@ -31,7 +31,6 @@ SPEED = 40
 
 
 class SnakeGameAI:
-
     def __init__(self, w=640, h=480):
         self.w = w
         self.h = h

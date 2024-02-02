@@ -35,10 +35,13 @@ The goal of this project is to leverage RL techniques to train an intelligent ag
    -   [0,1,0] -> Right  
    -   [0,0,1] -> Left  
 
-5. **Training and Evaluation:**
+5. **Training and Evaluation**
 
-6. **Visualization:**
+6. **Visualization**
 
+
+## Notes
+   - If the weights are loaded and the model is already good, reduce epsilon to better performance(reducing exploration)
 ## Learning Outcomes
 
 - Gain hands-on experience with RL algorithms and their applications in game environments.
